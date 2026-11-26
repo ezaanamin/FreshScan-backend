@@ -6,6 +6,95 @@ from ..models.store import Store
 from ..models.inventory import InventoryItem
 
 
+def seed_default_stores():
+    """
+    Ensures default retail network stores exist in PostgreSQL:
+    - Store 104: Downtown Supermarket (Primary Flagship)
+    - Store 108: Westside Grocers & Market
+    - Store 112: Uptown Fresh Produce Mart
+    - Store 120: Metro Cold Storage Hub
+    """
+    db = SessionLocal()
+    try:
+        stores_data = [
+            {
+                "id": 1,
+                "code": "104",
+                "name": "Downtown Supermarket",
+                "address": "452 Market St, Financial District",
+                "city": "San Francisco, CA",
+                "store_type": "Supermarket",
+                "status": "Online / Active",
+                "camera_nodes": 4,
+                "aisles": 12,
+                "manager": "Alex Morgan",
+                "contact_phone": "+1 (415) 555-0194",
+                "logo_url": "/static/uploads/logos/store_1_a1ab8c4e.png",
+                "currency": "USD",
+                "is_primary": True,
+            },
+            {
+                "id": 2,
+                "code": "108",
+                "name": "Westside Grocers & Market",
+                "address": "882 Sunset Blvd, Westside",
+                "city": "San Francisco, CA",
+                "store_type": "Express Mart",
+                "status": "Online / Active",
+                "camera_nodes": 3,
+                "aisles": 8,
+                "manager": "Elena Vance",
+                "contact_phone": "+1 (415) 555-0322",
+                "logo_url": "/static/uploads/logos/store_2_westside.png",
+                "currency": "EUR",
+                "is_primary": False,
+            },
+            {
+                "id": 3,
+                "code": "112",
+                "name": "Uptown Fresh Produce Mart",
+                "address": "1204 Pine St, Uptown",
+                "city": "Oakland, CA",
+                "store_type": "Produce Center",
+                "status": "Restocking",
+                "camera_nodes": 3,
+                "aisles": 6,
+                "manager": "Marcus Reed",
+                "contact_phone": "+1 (510) 555-0811",
+                "logo_url": "/static/uploads/logos/store_3_uptown.png",
+                "currency": "GBP",
+                "is_primary": False,
+            },
+            {
+                "id": 4,
+                "code": "120",
+                "name": "Metro Cold Storage Hub",
+                "address": "300 Terminal Way, Port District",
+                "city": "Oakland, CA",
+                "store_type": "Cold Storage Hub",
+                "status": "Online / Active",
+                "camera_nodes": 2,
+                "aisles": 4,
+                "manager": "Sarah Chen",
+                "contact_phone": "+1 (510) 555-0943",
+                "logo_url": "/static/uploads/logos/store_4_metro.png",
+                "currency": "CAD",
+                "is_primary": False,
+            },
+        ]
+        for s in stores_data:
+            existing = db.query(Store).filter(Store.code == s["code"]).first()
+            if not existing:
+                new_s = Store(**s)
+                db.add(new_s)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Error seeding default stores: {e}")
+    finally:
+        db.close()
+
+
 def seed_default_roles_and_users():
     """
     Ensures core roles and user accounts with passwords exist in PostgreSQL:

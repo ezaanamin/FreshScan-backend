@@ -359,6 +359,11 @@ INVENTORY_DATA = [
 
 def seed_database():
     Base.metadata.create_all(bind=engine)
+    try:
+        from app.core.seeders import seed_default_stores
+        seed_default_stores()
+    except Exception as e:
+        print(f"Note: seed_default_stores: {e}")
     db = SessionLocal()
     try:
         inserted = 0
