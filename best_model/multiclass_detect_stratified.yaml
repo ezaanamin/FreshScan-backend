@@ -1,0 +1,35 @@
+# Stratified resplit of Multiclass Object Detection Model.v1i.yolov8
+path: Multiclass_stratified
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 27
+names:
+  0: apple
+  1: apple_rotten
+  2: banana
+  3: banana_rotten
+  4: bolt
+  5: butter
+  6: capsicum
+  7: capsicum_rotten
+  8: eggs
+  9: garlic
+  10: guava
+  11: guava_rotten
+  12: lemon
+  13: mango
+  14: mango_rotten
+  15: nut
+  16: onion
+  17: orange
+  18: orange_rotten
+  19: package
+  20: pomegranate
+  21: pomegranate_rotten
+  22: potato
+  23: strawberry
+  24: strawberry_rotten
+  25: tomato
+  26: tomato_rotten

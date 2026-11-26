@@ -3,10 +3,35 @@ import io
 from typing import Dict, List, Any, Optional
 from PIL import Image
 
-MODEL_PATH = os.getenv(
-    "MODEL_PATH",
-    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "best_model", "best.pt"))
-)
+def resolve_model_path() -> str:
+    """
+    Search multiple candidate locations for best.pt weights:
+    1. MODEL_PATH environment variable (if explicitly set and file exists)
+    2. /app/best_model/best.pt (inside standard Docker container)
+    3. Relative to backend/ root: backend/best_model/best.pt
+    4. Relative to monorepo root: best_model/best.pt
+    5. Fallback to /best_model/best.pt
+    """
+    env_path = os.getenv("MODEL_PATH")
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    candidates = [
+        env_path,
+        "/app/best_model/best.pt",
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "best_model", "best.pt")),
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "best_model", "best.pt")),
+        "/best_model/best.pt",
+    ]
+    for candidate in candidates:
+        if candidate and os.path.exists(candidate):
+            return candidate
+
+    # If none found, return env_path or standard default for clear error reporting
+    return env_path or "/app/best_model/best.pt"
+
+
+MODEL_PATH = resolve_model_path()
 
 # 27 Classes metadata matching multiclass_detect_stratified.yaml
 CLASS_METADATA: Dict[str, Dict[str, Any]] = {
@@ -45,10 +70,11 @@ def get_model():
     """Lazy load YOLO model to optimize startup time."""
     global _yolo_model
     if _yolo_model is None:
-        if not os.path.exists(MODEL_PATH):
-            raise FileNotFoundError(f"Model weights not found at: {MODEL_PATH}")
+        model_path = resolve_model_path()
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"Model weights not found at: {model_path}")
         from ultralytics import YOLO
-        _yolo_model = YOLO(MODEL_PATH)
+        _yolo_model = YOLO(model_path)
     return _yolo_model
 
 

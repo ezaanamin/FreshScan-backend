@@ -29,7 +29,9 @@ services:
       DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-freshscan_user}:${POSTGRES_PASSWORD:-freshscan_password}@db:5432/${POSTGRES_DB:-freshscan_db}
       APP_ENV: production
       APP_PORT: 8000
+      MODEL_PATH: /app/best_model/best.pt
     volumes:
+      - ./best_model:/app/best_model:ro
       - backend_uploads:/app/static/uploads
     ports:
       - "8000:8000"
