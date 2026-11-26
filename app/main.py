@@ -4,7 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .database import engine, Base
-from .core.seeders import seed_default_roles_and_users, seed_default_orders
+from .core.seeders import (
+    seed_default_roles_and_users,
+    seed_default_orders,
+    seed_default_inventory,
+)
 from .routers import api_router
 from .config import STATIC_DIR
 
@@ -15,6 +19,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     seed_default_roles_and_users()
     seed_default_orders()
+    seed_default_inventory()
     yield
 
 

@@ -3,6 +3,7 @@ from ..database import SessionLocal
 from ..models.user import User
 from ..models.order import Order
 from ..models.store import Store
+from ..models.inventory import InventoryItem
 
 
 def seed_default_roles_and_users():
@@ -132,5 +133,25 @@ def seed_default_orders():
     except Exception as e:
         db.rollback()
         print(f"Error seeding default orders: {e}")
+    finally:
+        db.close()
+
+
+def seed_default_inventory():
+    """
+    Ensures default retail produce and grocery inventory items exist in PostgreSQL.
+    """
+    db = SessionLocal()
+    try:
+        existing_count = db.query(InventoryItem).count()
+        if existing_count == 0:
+            try:
+                from seed_inventory import INVENTORY_DATA
+                for item in INVENTORY_DATA:
+                    db.add(InventoryItem(**item))
+                db.commit()
+            except Exception as e:
+                db.rollback()
+                print(f"Error seeding inventory items: {e}")
     finally:
         db.close()
