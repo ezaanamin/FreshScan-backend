@@ -1,9 +1,32 @@
 from datetime import datetime, timedelta
+from sqlalchemy import text
 from ..database import SessionLocal
 from ..models.user import User
 from ..models.order import Order
 from ..models.store import Store
 from ..models.inventory import InventoryItem
+
+
+def sync_db_sequences():
+    """
+    Syncs PostgreSQL auto-increment sequences with maximum table IDs.
+    Crucial when records have been inserted with explicit IDs to prevent
+    duplicate key UniqueViolation on next INSERT.
+    """
+    db = SessionLocal()
+    try:
+        tables = ["stores", "users", "orders", "inventory"]
+        for tbl in tables:
+            try:
+                db.execute(text(f"SELECT setval(pg_get_serial_sequence('{tbl}', 'id'), COALESCE(max(id), 1)) FROM {tbl};"))
+            except Exception:
+                pass
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Note syncing sequences: {e}")
+    finally:
+        db.close()
 
 
 def seed_default_stores():
@@ -88,6 +111,7 @@ def seed_default_stores():
                 new_s = Store(**s)
                 db.add(new_s)
         db.commit()
+        sync_db_sequences()
     except Exception as e:
         db.rollback()
         print(f"Error seeding default stores: {e}")
@@ -142,6 +166,7 @@ def seed_default_roles_and_users():
                     u.store_id = store_id
 
         db.commit()
+        sync_db_sequences()
     except Exception as e:
         db.rollback()
         print(f"Error seeding roles and users: {e}")
@@ -219,6 +244,7 @@ def seed_default_orders():
                     )
                     db.add(new_ord)
             db.commit()
+            sync_db_sequences()
     except Exception as e:
         db.rollback()
         print(f"Error seeding default orders: {e}")
@@ -239,6 +265,7 @@ def seed_default_inventory():
                 for item in INVENTORY_DATA:
                     db.add(InventoryItem(**item))
                 db.commit()
+                sync_db_sequences()
             except Exception as e:
                 db.rollback()
                 print(f"Error seeding inventory items: {e}")

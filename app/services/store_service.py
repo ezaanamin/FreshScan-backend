@@ -72,64 +72,74 @@ def get_store(store_id: int, db: Session) -> StoreResponse:
 
 
 def create_store(db: Session, store_in: StoreCreate) -> StoreResponse:
-    clean_code = store_in.code.strip().replace("#", "")
-    existing = db.query(Store).filter(Store.code == clean_code).first()
-    if existing:
+    try:
+        clean_code = store_in.code.strip().replace("#", "")
+        existing = db.query(Store).filter(Store.code == clean_code).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Store with code #{clean_code} already exists."
+            )
+        new_store = Store(
+            code=clean_code,
+            name=store_in.name.strip(),
+            address=store_in.address.strip(),
+            city=store_in.city.strip(),
+            store_type=store_in.store_type,
+            status=store_in.status,
+            camera_nodes=store_in.camera_nodes,
+            aisles=store_in.aisles,
+            manager=store_in.manager.strip(),
+            contact_phone=store_in.contact_phone,
+            currency=store_in.currency or "USD",
+            is_primary=store_in.is_primary,
+        )
+        db.add(new_store)
+        db.flush()
+
+        # Provision Store Admin Manager User Account
+        admin_name = store_in.admin_name.strip() if (store_in.admin_name and store_in.admin_name.strip()) else store_in.manager.strip()
+        admin_email = store_in.admin_email.strip().lower() if (store_in.admin_email and store_in.admin_email.strip()) else f"manager.{clean_code.lower()}@freshscan.io"
+        admin_pwd = store_in.admin_password.strip() if (store_in.admin_password and store_in.admin_password.strip()) else f"Store{clean_code}!"
+
+        existing_user = db.query(User).filter(User.email == admin_email).first()
+        if existing_user:
+            existing_user.store_id = new_store.id
+            existing_user.role = "STORE_ADMIN"
+            existing_user.full_name = admin_name
+            admin_user_id = existing_user.id
+        else:
+            new_admin = User(
+                full_name=admin_name,
+                email=admin_email,
+                password=admin_pwd,
+                role="STORE_ADMIN",
+                store_id=new_store.id,
+            )
+            db.add(new_admin)
+            db.flush()
+            admin_user_id = new_admin.id
+
+        db.commit()
+        db.refresh(new_store)
+        resp = StoreResponse.model_validate(new_store)
+        resp.on_hand_units = 0
+        resp.inventory_valuation = Decimal("0.00")
+        resp.freshness_score = 98.5
+        resp.spoilage_count = 0
+        resp.admin_user_id = admin_user_id
+        resp.admin_email = admin_email
+        resp.admin_name = admin_name
+        return resp
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Store with code #{clean_code} already exists."
+            detail=f"Database error creating store: {str(e)}"
         )
-    new_store = Store(
-        code=clean_code,
-        name=store_in.name.strip(),
-        address=store_in.address.strip(),
-        city=store_in.city.strip(),
-        store_type=store_in.store_type,
-        status=store_in.status,
-        camera_nodes=store_in.camera_nodes,
-        aisles=store_in.aisles,
-        manager=store_in.manager.strip(),
-        contact_phone=store_in.contact_phone,
-        currency=store_in.currency or "USD",
-        is_primary=store_in.is_primary,
-    )
-    db.add(new_store)
-    db.flush()
-
-    # Provision Store Admin Manager User Account
-    admin_name = store_in.admin_name.strip() if (store_in.admin_name and store_in.admin_name.strip()) else store_in.manager.strip()
-    admin_email = store_in.admin_email.strip().lower() if (store_in.admin_email and store_in.admin_email.strip()) else f"manager.{clean_code.lower()}@freshscan.io"
-    admin_pwd = store_in.admin_password.strip() if (store_in.admin_password and store_in.admin_password.strip()) else f"Store{clean_code}!"
-
-    existing_user = db.query(User).filter(User.email == admin_email).first()
-    if existing_user:
-        existing_user.store_id = new_store.id
-        existing_user.role = "STORE_ADMIN"
-        existing_user.full_name = admin_name
-        admin_user_id = existing_user.id
-    else:
-        new_admin = User(
-            full_name=admin_name,
-            email=admin_email,
-            password=admin_pwd,
-            role="STORE_ADMIN",
-            store_id=new_store.id,
-        )
-        db.add(new_admin)
-        db.flush()
-        admin_user_id = new_admin.id
-
-    db.commit()
-    db.refresh(new_store)
-    resp = StoreResponse.model_validate(new_store)
-    resp.on_hand_units = 0
-    resp.inventory_valuation = Decimal("0.00")
-    resp.freshness_score = 98.5
-    resp.spoilage_count = 0
-    resp.admin_user_id = admin_user_id
-    resp.admin_email = admin_email
-    resp.admin_name = admin_name
-    return resp
 
 
 def update_store(db: Session, store_id: int, store_in: StoreUpdate) -> StoreResponse:
