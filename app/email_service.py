@@ -266,18 +266,14 @@ def send_verification_email(to_email: str, full_name: str, code: str) -> dict:
     html_content = render_verification_html(full_name, code)
     text_content = render_verification_text(full_name, code)
 
-    # 1. Print verification code prominently to console
-    print("\n" + "=" * 65)
-    print(f"📧 [FRESHSCAN EMAIL SERVICE - GMAIL API]")
-    print(f"To: {full_name} <{to_email}>")
-    print(f"Subject: {subject}")
-    print(f"✦ VERIFICATION CODE: >>> {code} <<<")
-    print(f"Expires in 15 minutes")
-    print("=" * 65 + "\n")
-
-    # 2. Attempt Google Gmail API transmission
+    # 1. Attempt Google Gmail API transmission
     gmail_result = send_via_gmail_api(to_email, subject, html_content, text_content)
     if gmail_result.get("sent"):
+        print("\n" + "=" * 65)
+        print("✅ [FRESHSCAN EMAIL SERVICE - SENT VIA GMAIL API]")
+        print(f"To: {full_name} <{to_email}>")
+        print(f"Message ID: {gmail_result.get('message_id')}")
+        print("=" * 65 + "\n")
         return {
             "success": True,
             "method": "gmail_api",
@@ -286,9 +282,13 @@ def send_verification_email(to_email: str, full_name: str, code: str) -> dict:
             "code": code,
         }
 
-    # 3. Attempt SMTP transmission fallback if Gmail API not yet authorized
+    # 2. Attempt SMTP transmission fallback
     smtp_result = send_via_smtp(to_email, subject, html_content, text_content)
     if smtp_result.get("sent"):
+        print("\n" + "=" * 65)
+        print("✅ [FRESHSCAN EMAIL SERVICE - SENT VIA SMTP]")
+        print(f"To: {full_name} <{to_email}>")
+        print("=" * 65 + "\n")
         return {
             "success": True,
             "method": "smtp",
@@ -296,11 +296,24 @@ def send_verification_email(to_email: str, full_name: str, code: str) -> dict:
             "code": code,
         }
 
-    # 4. Fallback to console transmission
+    # 3. Fallback to console transmission when real delivery fails
+    failure_reason = gmail_result.get("reason", "Unknown Gmail API failure")
+    smtp_reason = smtp_result.get("reason", "SMTP not configured")
+    print("\n" + "=" * 65)
+    print("⚠️  [FRESHSCAN EMAIL SERVICE - NOT DELIVERED VIA EMAIL (CONSOLE FALLBACK)]")
+    print(f"To: {full_name} <{to_email}>")
+    print(f"Subject: {subject}")
+    print(f"✦ VERIFICATION CODE: >>> {code} <<<")
+    print(f"Gmail API status: {failure_reason}")
+    print(f"SMTP status:      {smtp_reason}")
+    print(f"Expires in 15 minutes")
+    print("=" * 65 + "\n")
+
     return {
         "success": True,
         "method": "console",
         "email": to_email,
         "code": code,
-        "gmail_api_note": gmail_result.get("reason"),
+        "gmail_api_note": failure_reason,
+        "smtp_note": smtp_reason,
     }
