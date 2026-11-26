@@ -2,7 +2,8 @@ FROM python:3.12-slim
 
 # Prevent Python from writing bytecode and enable immediate output flushing
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PIP_DEFAULT_TIMEOUT=1000
 
 WORKDIR /app
 
@@ -10,15 +11,20 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gcc \
+    python3-dev \
     libpq-dev \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install python dependencies
-COPY requirements.txt .
+# Upgrade pip and install lightweight CPU-only PyTorch first
+# (Crucial for AWS EC2: prevents pulling 2.5GB CUDA binaries that crash t2/t3 instances)
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining backend dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend application source
 COPY . .
